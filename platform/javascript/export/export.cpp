@@ -209,6 +209,7 @@ class EditorExportPlatformJavaScript : public EditorExportPlatform {
 	Ref<ImageTexture> logo;
 	Ref<ImageTexture> run_icon;
 	Ref<ImageTexture> stop_icon;
+	Ref<ImageTexture> reload_icon;
 	int menu_options = 0;
 
 	Ref<EditorHTTPServer> server;
@@ -261,8 +262,33 @@ public:
 
 	virtual bool poll_export();
 	virtual int get_options_count() const;
-	virtual String get_option_label(int p_index) const { return p_index ? TTR("Stop HTTP Server") : TTR("Run in Browser"); }
-	virtual String get_option_tooltip(int p_index) const { return p_index ? TTR("Stop HTTP Server") : TTR("Run exported HTML in the system's default browser."); }
+
+	virtual String get_option_label(int p_index) const {
+		switch (p_index) {
+			case 0:
+				return TTR("Run in Browser");
+			case 1:
+				return TTR("Stop HTTP Server");
+			case 2:
+				return TTR("Reload");
+		}
+
+		return TTR("Unknown option");
+	}
+
+	virtual String get_option_tooltip(int p_index) const {
+		switch (p_index) {
+			case 0:
+				return TTR("Run exported HTML in the system's default browser.");
+			case 1:
+				return TTR("Stop HTTP Server");
+			case 2:
+				return TTR("Export and reload in code");
+		}
+
+		return TTR("Unknown option");
+	}
+
 	virtual Ref<ImageTexture> get_option_icon(int p_index) const;
 	virtual Error run(const Ref<EditorExportPreset> &p_preset, int p_option, int p_debug_flags);
 	virtual Ref<Texture> get_run_icon() const;
@@ -640,14 +666,23 @@ bool EditorExportPlatformJavaScript::poll_export() {
 			server->stop();
 			server_lock.unlock();
 		} else {
-			menu_options += 1;
+			menu_options += 2;
 		}
 	}
 	return menu_options != prev;
 }
 
 Ref<ImageTexture> EditorExportPlatformJavaScript::get_option_icon(int p_index) const {
-	return p_index == 1 ? stop_icon : EditorExportPlatform::get_option_icon(p_index);
+	switch (p_index) {
+		case 0:
+			return run_icon;
+		case 1:
+			return stop_icon;
+		case 2:
+			return reload_icon;
+	}
+
+	return run_icon;
 }
 
 int EditorExportPlatformJavaScript::get_options_count() const {
@@ -698,6 +733,22 @@ Error EditorExportPlatformJavaScript::run(const Ref<EditorExportPreset> &p_prese
 	server_lock.unlock();
 	ERR_FAIL_COND_V_MSG(err != OK, err, "Unable to start HTTP server.");
 
+	if (p_option == 2) {
+		List<String> args;
+		args.push_back("httpness");
+		args.push_back("-m");
+		args.push_back("POST");
+		args.push_back("-d");
+		args.push_back("'{}'");
+		args.push_back("-u");
+		args.push_back("http://" + bind_host + ":" + itos(3000) + "/__godot_refresh");
+
+		OS::get_singleton()->execute("npx", args, false);
+
+		// TODO: call webhook to trigger a reload in the webapp to avoid the need to refresh the window
+		return OK;
+	}
+
 	OS::get_singleton()->shell_open(String("http://" + bind_host + ":" + itos(bind_port) + "/tmp_js_export.html"));
 	// FIXME: Find out how to clean up export files after running the successfully
 	// exported game. Might not be trivial.
@@ -733,10 +784,13 @@ EditorExportPlatformJavaScript::EditorExportPlatformJavaScript() {
 	run_icon->create_from_image(img);
 
 	Ref<Theme> theme = EditorNode::get_singleton()->get_editor_theme();
-	if (theme.is_valid())
+
+	if (theme.is_valid()) {
 		stop_icon = theme->get_icon("Stop", "EditorIcons");
-	else
+		reload_icon = theme->get_icon("ReloadSmall", "EditorIcons");
+	} else {
 		stop_icon.instance();
+	}
 }
 
 EditorExportPlatformJavaScript::~EditorExportPlatformJavaScript() {
