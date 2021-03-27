@@ -337,6 +337,7 @@ void EditorExportPlatformJavaScript::_fix_html(Vector<uint8_t> &p_html, const Re
 		current_line = current_line.replace("$GODOT_PROJECT_NAME", ProjectSettings::get_singleton()->get_setting("application/config/name"));
 		current_line = current_line.replace("$GODOT_HEAD_INCLUDE", p_preset->get("html/head_include"));
 		current_line = current_line.replace("$GODOT_CONFIG", str_config);
+		current_line = current_line.replace("$GODOT_VITE_DEV_SERVER", p_preset->get("vite/vite_dev_server_location"));
 		str_export += current_line + "\n";
 	}
 
@@ -376,6 +377,8 @@ void EditorExportPlatformJavaScript::get_export_options(List<ExportOption> *r_op
 	r_options->push_back(ExportOption(PropertyInfo(Variant::STRING, "custom_template/debug", PROPERTY_HINT_GLOBAL_FILE, "*.zip"), ""));
 	r_options->push_back(ExportOption(PropertyInfo(Variant::STRING, "custom_template/release", PROPERTY_HINT_GLOBAL_FILE, "*.zip"), ""));
 
+	r_options->push_back(ExportOption(PropertyInfo(Variant::STRING, "vite/vite_dev_server_location", PROPERTY_HINT_NONE), "http://localhost:3000"));
+	r_options->push_back(ExportOption(PropertyInfo(Variant::STRING, "vite/vite_project_location", PROPERTY_HINT_DIR), ProjectSettings::get_singleton()->globalize_path("res://")));
 	r_options->push_back(ExportOption(PropertyInfo(Variant::INT, "variant/export_type", PROPERTY_HINT_ENUM, "Regular,Threads,GDNative"), 0)); // Export type.
 	r_options->push_back(ExportOption(PropertyInfo(Variant::BOOL, "vram_texture_compression/for_desktop"), true)); // S3TC
 	r_options->push_back(ExportOption(PropertyInfo(Variant::BOOL, "vram_texture_compression/for_mobile"), false)); // ETC or ETC2, depending on renderer
@@ -734,18 +737,15 @@ Error EditorExportPlatformJavaScript::run(const Ref<EditorExportPreset> &p_prese
 	ERR_FAIL_COND_V_MSG(err != OK, err, "Unable to start HTTP server.");
 
 	if (p_option == 2) {
+		String vite_server = p_preset->get("vite/vite_dev_server_location");
+		String vite_project_location = p_preset->get("vite/vite_project_location");
+
 		List<String> args;
-		args.push_back("httpness");
-		args.push_back("-m");
-		args.push_back("POST");
-		args.push_back("-d");
-		args.push_back("'{}'");
-		args.push_back("-u");
-		args.push_back("http://" + bind_host + ":" + itos(3000) + "/__godot_refresh");
+		args.push_back("-c");
+		args.push_back("cd '" + vite_project_location + "' && npx httpness -m POST -d '{}' -u " + vite_server + "/__godot_refresh > /dev/null");
 
-		OS::get_singleton()->execute("npx", args, false);
+		OS::get_singleton()->execute("sh", args, false);
 
-		// TODO: call webhook to trigger a reload in the webapp to avoid the need to refresh the window
 		return OK;
 	}
 
