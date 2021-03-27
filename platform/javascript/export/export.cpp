@@ -378,7 +378,7 @@ void EditorExportPlatformJavaScript::get_export_options(List<ExportOption> *r_op
 	r_options->push_back(ExportOption(PropertyInfo(Variant::STRING, "custom_template/release", PROPERTY_HINT_GLOBAL_FILE, "*.zip"), ""));
 
 	r_options->push_back(ExportOption(PropertyInfo(Variant::STRING, "vite/vite_dev_server_location", PROPERTY_HINT_NONE), "http://localhost:3000"));
-	r_options->push_back(ExportOption(PropertyInfo(Variant::STRING, "vite/vite_project_location", PROPERTY_HINT_DIR), ProjectSettings::get_singleton()->globalize_path("res://")));
+	r_options->push_back(ExportOption(PropertyInfo(Variant::STRING, "vite/vite_project_location", PROPERTY_HINT_DIR), "res://"));
 	r_options->push_back(ExportOption(PropertyInfo(Variant::INT, "variant/export_type", PROPERTY_HINT_ENUM, "Regular,Threads,GDNative"), 0)); // Export type.
 	r_options->push_back(ExportOption(PropertyInfo(Variant::BOOL, "vram_texture_compression/for_desktop"), true)); // S3TC
 	r_options->push_back(ExportOption(PropertyInfo(Variant::BOOL, "vram_texture_compression/for_mobile"), false)); // ETC or ETC2, depending on renderer
@@ -742,7 +742,7 @@ Error EditorExportPlatformJavaScript::run(const Ref<EditorExportPreset> &p_prese
 
 		List<String> args;
 		args.push_back("-c");
-		args.push_back("cd '" + vite_project_location + "' && npx httpness -m POST -d '{}' -u " + vite_server + "/__godot_refresh > /dev/null");
+		args.push_back("cd '" + ProjectSettings::get_singleton()->globalize_path(vite_project_location) + "' && npx --yes httpness -m POST -d '{}' -u " + vite_server + "/__godot_refresh > /dev/null");
 
 		OS::get_singleton()->execute("sh", args, false);
 
