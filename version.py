@@ -1,9 +1,9 @@
 short_name = "godot"
-name = "Godot Engine"
+name = "Godot Engine x Vite"
 major = 3
 minor = 3
 patch = 0
 status = "rc"
-module_config = "vite"
+module_config = ""
 year = 2021
 website = "https://godotengine.org"
